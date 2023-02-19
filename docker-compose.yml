@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  mongo-1-2:
+    container_name: "mongo-1-2"
+    image: mongo:5.0
+    ports:
+      - "27022:27022"
+    command: mongod --replSet rs1 --port 27022 --bind_ip_all
+    restart: always
+    networks:
+      - mongors-network
+
+  mongo-1-3:
+    container_name: "mongo-1-3"
+    image: mongo:5.0
+    ports:
+      - "27023:27023"
+    command: mongod --replSet rs1 --port 27023 --bind_ip_all
+    restart: always
+    networks:
+      - mongors-network
+
+  mongo-1-1:
+    container_name: "mongo-1-1"
+    image: mongo:5.0
+    ports:
+      - "27021:27021"
+    command: mongod --replSet rs1 --port 27021 --bind_ip_all
+    links:
+      - mongo-1-2:mongo-1-2
+      - mongo-1-3:mongo-1-3
+    restart: always
+    networks:
+      - mongors-network
+
+  mongo-rs1-setup:
+    container_name: "mongo-rs1-setup"
+    image: mongo:5.0
+    depends_on:
+      - "mongo-1-1"
+      - "mongo-1-2"
+      - "mongo-1-3"
+    links:
+      - mongo-1-1:mongo-1-1
+      - mongo-1-2:mongo-1-2
+      - mongo-1-3:mongo-1-3
+    volumes:
+      - ./scripts:/scripts
+    environment:
+      - MONGO1=mongo-1-1
+      - MONGO2=mongo-1-2
+      - MONGO3=mongo-1-3
+      - RS=rs1
+    entrypoint: ["/scripts/cluster-setup.sh"]
+
+networks:
+  mongors-network:
+    driver: bridge
